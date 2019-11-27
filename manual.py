@@ -1,5 +1,7 @@
 
 #%% 
+import re
+import numpy as np
 
 def grabber(file):
     fulldata = []

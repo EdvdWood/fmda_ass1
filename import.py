@@ -1,10 +1,9 @@
 #%% Importing
 import pandas as pd
-import re
 import numpy as np
 import matplotlib.pyplot as plt
-import seaborn as sns
 from matplotlib.ticker import FuncFormatter
+import seaborn as sns
 import scipy.stats as stats
 
 #%% Fast way
@@ -63,20 +62,24 @@ fig, ax = plt.subplots(1,1)
 sns.scatterplot(socio_subset["Value"], nat_subset["Value"])
 # Adding labels
 plt.xlabel("Percentage of Population living in Poverty")
-plt.ylabel("Proportion of Population Relying on Clean Fuels")
+plt.ylabel("Proportion of Population Relying on Clean Fuels and Technology")
 
 # Setting values to percentages
 ax.xaxis.set_major_formatter(FuncFormatter(FuncFormatter('{0:.0%}'.format))) 
 ax.yaxis.set_major_formatter(FuncFormatter(FuncFormatter('{0:.0%}'.format)))
 
 # Setting Aspect Ratio
-ratio = 1
-xleft, xright = ax.get_xlim()
-ybottom, ytop = ax.get_ylim()
-ax.set_aspect(abs((xright-xleft)/(ybottom-ytop))*ratio)
+def aspectsetter(ax):
+    ratio = 1
+    xleft, xright = ax.get_xlim()
+    ybottom, ytop = ax.get_ylim()
+    ax.set_aspect(abs((xright-xleft)/(ybottom-ytop))*ratio)
+    
+aspectsetter(ax)
 
 # Saving Main plot
-plt.savefig("scatterplot.pdf", bbox_inches = 'tight', pad_inches = 0)
+plt.savefig("sdg_scatter_1.1.1_7.1.2.pdf", bbox_inches = "tight")
+del fig, ax, FuncFormatter
 plt.close()
 
 #%% Finding Correlation Coefficients
