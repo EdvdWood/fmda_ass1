@@ -7,31 +7,35 @@ import scipy.stats as stats
 from matplotlib.ticker import FuncFormatter
 from textwrap import wrap
 
-#%% Setting up the functions
+#%% Setting up the functions. 
+# Theoretically the functions should be able to take all percentage based indicators with (almost) no changes.
+# 
 # Splitting between indicators. 
-# The Social indicator is filtered to only use the value for all ages.
+# The Social indicator is filtered to only use the value for all ages. 
+# .copy() is used here to avoid a warning in pandas regarding chained operators.
 def Splitter(data, indicator):
     df = data.loc[data["Indicator"]==indicator].copy()
     if len(df["Nature"].unique()) > 1:   
         df = df.loc[df["Nature"]=="G"]
+    #Retrieving the indicator name for the plot later. 
     indname = df["SeriesDescription"].iloc[1]
     return df, indname
 
-# Removing < > indicators to turn data to floats, changing percentages to fractions
+# Removing < > indicators and turning data to floats, changing percentages to fractions
 def Cleaner(df):
     df.loc[:,["Value"]] = df["Value"].astype("str").map(lambda x: x.lstrip('<>'))
     df.loc[:,["Value"]] = df["Value"].astype("float")/100
     return df
 
-# Filtering for most recent year per country
+# Filtering for most recent year which has both indicators for each country. Ranges from 2000 to 2017.
 def FilterMaker(df1, df2):
     year_id = pd.merge(df1, df2, how="inner", on="GeoAreaName")
     year_id = year_id.loc[year_id["TimePeriod_x"]==year_id["TimePeriod_y"]]   
-    # Return set of most recent year per country
+    # Return set of most recent year per country, and remove gaps in the index.
     year_set = year_id.groupby(["GeoAreaName"])["TimePeriod_x"].max().reset_index()
     return year_set
     
-# Filtering the dataset to only contain the selected years.
+# Filtering the dataset to only contain the country + year combinations that have been selected previously.
 def Filter(df, year_set):
     mid = pd.merge(year_set, df, how="left", left_on=["GeoAreaName", "TimePeriod_x"],\
         right_on=["GeoAreaName","TimePeriod"])
@@ -49,12 +53,12 @@ def SanChecker(df1, df2):
 def Plotter(df1, df2, indname1, indname2, indep_ind_num, dep_ind_num):
     sns.scatterplot(df1["Value"], df2["Value"], marker="D", color="DarkGreen")
 
-    # Setting axis ticks to percentages
+    # Setting axis ticks to percentages. This is why the values had to be converted to fractions earlier.
     ax = plt.gca()
     ax.xaxis.set_major_formatter(FuncFormatter(FuncFormatter('{0:.0%}'.format))) 
     ax.yaxis.set_major_formatter(FuncFormatter(FuncFormatter('{0:.0%}'.format)))
 
-    # Adding labels
+    # Adding responsive and flexible labels
     xlab = '\n'.join(wrap(indname1, 45))
     ylab = '\n'.join(wrap(indname2, 45))
     ax.set(xlabel=xlab, ylabel=ylab)
@@ -69,23 +73,24 @@ def Plotter(df1, df2, indname1, indname2, indep_ind_num, dep_ind_num):
         .format(indep_ind_num, dep_ind_num), bbox_inches = "tight")
     plt.close()
 
-# Finding correlation coefficients
+# Finding correlation coefficients and returning them with context.
 def Correlator(df1, df2, indname1, indname2, indep_ind_num, dep_ind_num):
     lin_corr, lin_corr_pval = stats.pearsonr(df1["Value"], df2["Value"])
     mono_corr, mono_corr_pval = stats.spearmanr(df1["Value"], df2["Value"])
     
-    out1 = ("The indicators used are {0} ({1}) and {2} ({3})."\
+    indicators_out = ("The indicators used are {0} ({1}) and {2} ({3})."\
         .format(indname1, indep_ind_num, indname2, dep_ind_num))
-    out2 = ("\nThe Linear Correlation Coëfficient is estimated at {0}, with a p-value of {1}"\
+    lin_corr_out = ("\nThe Linear Correlation Coëfficient is estimated at {0}, with a p-value of {1}"\
         .format(round(lin_corr, 3), format(round(lin_corr_pval, 5),'.6f')))
-    out3 = (SignificanceChecker(lin_corr_pval))
-    out4 = ("The Monotonic Correlation Coëfficient is estimated at {0}, with a p-value of {1}"\
+    lin_p_val_out = (SignificanceChecker(lin_corr_pval))
+    mono_corr_out = ("The Monotonic Correlation Coëfficient is estimated at {0}, with a p-value of {1}"\
         .format(round(mono_corr, 3), format(round(mono_corr_pval, 5),'.6f')))
-    out5 = (SignificanceChecker(mono_corr_pval))
-    out6 = (TradeOffChecker(np.mean([lin_corr, mono_corr])))
-    return ("{0}\n{1}\n{2}\n{3}\n{4}\n{5}".format(out1, out2, out3, out4, out5, out6))
+    mono_p_val_out = (SignificanceChecker(mono_corr_pval))
+    tradeoff_syn_out = (TradeOffChecker(np.mean([lin_corr, mono_corr])))
+    return ("{0}\n{1}\n{2}\n{3}\n{4}\n{5}".format(indicators_out, lin_corr_out, lin_p_val_out, \
+         mono_corr_out, mono_p_val_out, tradeoff_syn_out))
     
-# Defining output functions 
+# Defining functions that summarize the results and draw conclusions.
 def SignificanceChecker(p_value):
     if p_value > 0.1:
         return("This P-value is too high for the result to \
@@ -111,8 +116,8 @@ and technology, implying a tradeoff between the two SDG's")
     else:
         return("\nThere is no correlation")
 
-#%% Defining wrapper function
-def Wrapper(filename, indep_ind_num, dep_ind_num):
+#%% Defining wrapper function to call everything previously defined.
+def Wrapper(filename = "data.csv", indep_ind_num = "1.1.1", dep_ind_num = "7.1.2"):
     #Importing data
     data = pd.read_csv(filename)\
         [["Indicator", "SeriesDescription", "GeoAreaName", "TimePeriod", "Value", "Nature"]]
@@ -138,4 +143,4 @@ def Wrapper(filename, indep_ind_num, dep_ind_num):
     return final_out
 
 #%% Running Wrapper and printing output
-print(Wrapper("data.csv", "1.1.1", "7.1.2"))
+print(Wrapper())
